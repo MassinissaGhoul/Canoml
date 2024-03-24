@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-typedef enum {
+typedef enum
+{
     DEBUT_DOC,
     FIN_DOC,
     DEBUT_ANNEXE,
@@ -18,221 +18,247 @@ typedef enum {
     DEBUT_IMPORTANT,
     FIN_IMPORTANT,
     MOT_SIMPLE,
-    RETOUR_LIGNE
+    RETOUR_LIGNE,
+    FINITO
 } type_balise;
 
-typedef struct {
+typedef struct
+{
     type_balise type;
     char valeur[81];
 } balise;
 
-balise lire_prochaine_balise(FILE *fichier_entree, FILE *fichier_sortie) {
+typedef struct noeud_pile {
+    balise b;
+    struct noeud_pile *suivant;
+} noeud_pile;
+
+typedef noeud_pile *pile;
+
+void initialiser_pile(pile *p)
+{
+    *p = NULL;
+}
+
+void empiler(pile *p, balise b)
+{
+    noeud_pile *nouveau = malloc(sizeof(noeud_pile));
+    nouveau->b = b;
+    nouveau->suivant = *p;
+    *p = nouveau;
+}
+
+balise depiler(pile *p)
+{
+    balise b;
+    noeud_pile *temp;
+
+    if (*p == NULL)
+    {
+        b.type = FINITO;
+        return b;
+    }
+
+    temp = *p;
+    b = temp->b;
+    *p = temp->suivant;
+    free(temp);
+
+    return b;
+}
+
+int pile_vide(pile p)
+{
+    return p == NULL;
+}
+
+balise readBalise(FILE *fichier_entree, FILE *fichier_sortie)
+{
     balise b;
     char c;
     int i = 0;
-
-    do {
+    char *tag[14] = {"<document>", "</document>", "<annexe>", "</annexe>", "<section>", "</section>", "<titre>", "</titre>", "<liste>", "</liste>", "<item>", "</item>", "<important>", "</important>"};
+    do
+    {
         c = fgetc(fichier_entree);
     } while (c == ' ' || c == '\n');
 
-    if (c == EOF) {
-        return (balise) {0, ""};
+    if (c == EOF)
+    {
+        b.type = FINITO;
+        return b;
     }
 
-    while (c != EOF) {
-        do {
+    if (c == '<')
+    {
+        b.valeur[i++] = c;
+        do
+        {
             c = fgetc(fichier_entree);
-        } while (c == ' ' || c == '\n');
-
-        if (c == '<') {
-            b.valeur[i++] = c; 
-
-            do {
-                c = fgetc(fichier_entree);
-                b.valeur[i++] = c;
-            } while (c != '>' && c != EOF);
-            b.valeur[i] = '\0'; 
-
-            if (strstr(b.valeur, "<document>") != NULL) {
-                fprintf(fichier_sortie, "(balise_ouvrante, \"%s\")\n", "<document>");
-                b.type = DEBUT_DOC;
-            } else if (strstr(b.valeur, "</document>") != NULL) {
-                fprintf(fichier_sortie, "(balise_fermante, \"%s\")\n", "</document>");
-                b.type = FIN_DOC;
-            } else if (strstr(b.valeur, "<annexe>") != NULL) {
-                fprintf(fichier_sortie, "(balise_ouvrante, \"%s\")\n", "<annexe>");
-                b.type = DEBUT_ANNEXE;
-            } else if (strstr(b.valeur, "</annexe>") != NULL) {
-                fprintf(fichier_sortie, "(balise_fermante, \"%s\")\n", "</annexe>");
-                b.type = FIN_ANNEXE;
-            } else if (strstr(b.valeur, "<section>") != NULL) {
-                fprintf(fichier_sortie, "(balise_ouvrante, \"%s\")\n", "<section>");
-                b.type = DEBUT_SECTION;
-            } else if (strstr(b.valeur, "</section>") != NULL) {
-                fprintf(fichier_sortie, "(balise_fermante, \"%s\")\n", "</section>");
-                b.type = FIN_SECTION;
-            } else if (strstr(b.valeur, "<titre>") != NULL) {
-                fprintf(fichier_sortie, "(balise_ouvrante, \"%s\")\n", "<titre>");
-                b.type = DEBUT_TITRE;
-            } else if (strstr(b.valeur, "</titre>") != NULL) {
-                fprintf(fichier_sortie, "(balise_fermante, \"%s\")\n", "</titre>");
-                b.type = FIN_TITRE;
-            } else if (strstr(b.valeur, "<liste>") != NULL) {
-                fprintf(fichier_sortie, "(balise_ouvrante, \"%s\")\n", "<liste>");
-                b.type = DEBUT_LISTE;
-            } else if (strstr(b.valeur, "</liste>") != NULL) {
-                fprintf(fichier_sortie, "(balise_fermante, \"%s\")\n", "</liste>");
-                b.type = FIN_LISTE;
-            } else if (strstr(b.valeur, "<item>") != NULL) {
-                fprintf(fichier_sortie, "(balise_ouvrante, \"%s\")\n", "<item>");
-                b.type = DEBUT_ITEM;
-            } else if (strstr(b.valeur, "</item>") != NULL) {
-                fprintf(fichier_sortie, "(balise_fermante, \"%s\")\n", "</item>");
-                b.type = FIN_ITEM;
-            } else if (strstr(b.valeur, "<important>") != NULL) {
-                fprintf(fichier_sortie, "(balise_ouvrante, \"%s\")\n", "<important>");
-                b.type = DEBUT_IMPORTANT;
-            } else if (strstr(b.valeur, "</important>") != NULL) {
-                fprintf(fichier_sortie, "(balise_fermante, \"%s\")\n", "</important>");
-                b.type = FIN_IMPORTANT;
-            } else {
-                b.type = 0;
+            b.valeur[i++] = c;
+        } while (c != '>' && c != EOF);
+        b.valeur[i] = '\0';
+        for (int j = 0; j < 14; j++)
+        {
+            if (strcmp(b.valeur, tag[j]) == 0)
+            {
+                if (j % 2 == 0)
+                {
+                    fprintf(fichier_sortie, "(balise_ouvrante, \"%s\")\n", tag[j]);
+                    b.type = j;
+                }
+                else
+                {
+                    fprintf(fichier_sortie, "(balise_fermante, \"%s\")\n", tag[j]);
+                    b.type = j;
+                }
             }
-        } else {
-            i = 0;
-            do {
-                b.valeur[i++] = c;
-                c = fgetc(fichier_entree);
-            } while (c != ' ' && c != '\n' && c != '<' && c != EOF);
-            b.valeur[i] = '\0';
-
-            if (strcmp(b.valeur, "retour_a_la_ligne") == 0) {
-                b.type = RETOUR_LIGNE;
-            } else {
-                fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
-                b.type = MOT_SIMPLE;
-            }
+        }
+    }
+    else
+    {
+        i = 0;
+        do
+        {
+            b.valeur[i++] = c;
+            c = fgetc(fichier_entree);
+        } while (c != ' ' && c != '\n' && c != '<' && c != EOF);
+        b.valeur[i] = '\0';
+        if (strcmp(b.valeur, "retour_a_la_ligne") == 0)
+        {
+            b.type = RETOUR_LIGNE;
+        }
+        else
+        {
+            fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
+            b.type = MOT_SIMPLE;
         }
     }
 
     return b;
 }
 
+int analyse_syntaxique(FILE *fichier_entree, FILE *fichier_sortie)
+{
+    pile p;
+    balise b, b_fermante;
+    int correct = 1;
 
+    initialiser_pile(&p);
 
-int analyse_syntaxique(FILE *fichier_entree, FILE *fichier_sortie) {
-    balise b;
-    int en_cours = 0;
-
-    b = lire_prochaine_balise(fichier_entree, fichier_sortie);
-
-    while (b.type != 0) {
-        if (b.type == DEBUT_DOC) {
-            en_cours = FIN_DOC;
+    while (correct && (b = readBalise(fichier_entree, fichier_sortie)).type != FINITO)
+    {
+        switch (b.type)
+        {
+            case DEBUT_DOC:
+            case DEBUT_ANNEXE:
+            case DEBUT_SECTION:
+            case DEBUT_TITRE:
+            case DEBUT_LISTE:
+            case DEBUT_ITEM:
+            case DEBUT_IMPORTANT:
+                empiler(&p, b);
+                break;
+            case FIN_DOC:
+                b_fermante = depiler(&p);
+                if (b_fermante.type != DEBUT_DOC)
+                {
+                    correct = 0;
+                }
+                break;
+            case FIN_ANNEXE:
+                b_fermante = depiler(&p);
+                if (b_fermante.type != DEBUT_ANNEXE)
+                {
+                    correct = 0;
+                }
+                break;
+            case FIN_SECTION:
+                b_fermante = depiler(&p);
+                if (b_fermante.type != DEBUT_SECTION)
+                {
+                    correct = 0;
+                }
+                break;
+            case FIN_TITRE:
+                b_fermante = depiler(&p);
+                if (b_fermante.type != DEBUT_TITRE)
+                {
+                    correct = 0;
+                }
+                break;
+            case FIN_LISTE:
+                b_fermante = depiler(&p);
+                if (b_fermante.type != DEBUT_LISTE)
+                {
+                    correct = 0;
+                }
+                break;
+            case FIN_ITEM:
+                b_fermante = depiler(&p);
+                if (b_fermante.type != DEBUT_ITEM)
+                {
+                    correct = 0;
+                }
+                break;
+            case FIN_IMPORTANT:
+                b_fermante = depiler(&p);
+                if (b_fermante.type != DEBUT_IMPORTANT)
+                {
+                    correct = 0;
+                }
+                break;
+            default:
+                break;
         }
-        else if (b.type == DEBUT_ANNEXE) {
-            en_cours = FIN_ANNEXE;
-        }
-        else if (b.type == DEBUT_SECTION) {
-            en_cours = FIN_SECTION;
-        }
-        else if (b.type == DEBUT_TITRE) {
-            en_cours = FIN_TITRE;
-        }
-        else if (b.type == DEBUT_LISTE) {
-            en_cours = FIN_LISTE;
-        }
-        else if (b.type == DEBUT_ITEM) {
-            en_cours = FIN_ITEM;
-        }
-        else if (b.type == DEBUT_IMPORTANT) {
-            en_cours = FIN_IMPORTANT;
-        }
-        else if (b.type == FIN_DOC) {
-            if (en_cours == FIN_DOC) {
-                en_cours = 0;
-            } else {
-                return 0; 
-            }
-        }
-        else if (b.type == FIN_ANNEXE) {
-            if (en_cours == FIN_ANNEXE) {
-                en_cours = 0;
-            } else {
-                return 0; 
-            }
-        }
-
-         else if (b.type == FIN_SECTION) {
-            if (en_cours == FIN_SECTION) {
-                en_cours = 0;
-            } else {
-                return 0; 
-            }
-        }
-        else if (b.type == FIN_TITRE) {
-            if (en_cours == FIN_TITRE) {
-                en_cours = 0;
-            } else {
-                return 0; 
-            }
-        }
-        else if (b.type == FIN_LISTE) {
-            if (en_cours == FIN_LISTE) {
-                en_cours = 0;
-            } else {
-                return 0; 
-            }
-        }
-        else if (b.type == FIN_ITEM) {
-            if (en_cours == FIN_ITEM) {
-                en_cours = 0;
-            } else {
-                return 0; 
-            }
-        }
-        else if (b.type == FIN_IMPORTANT) {
-            if (en_cours == FIN_IMPORTANT) {
-                en_cours = 0;
-            } else {
-                return 0; 
-            }
-        }
-        else {
-            if (en_cours != 0) {
-                return 0; 
-            }
-        }
-
-        b = lire_prochaine_balise(fichier_entree, fichier_sortie);
     }
 
-    if (en_cours != 0) {
-        return 0;
+    if (!pile_vide(p))
+    {
+        correct = 0;
     }
 
-    return 1;
+    if (correct)
+    {
+        fprintf(fichier_sortie, "L'analyse syntaxique est correcte.\n");
+    }
+    else
+    {
+        fprintf(fichier_sortie, "Il y a une erreur syntaxique dans le fichier.\n");
+    }
+
+    return correct;
 }
 
-int main() {
+int main()
+{
     FILE *fichier_entree = fopen("input.txt", "r");
     FILE *fichier_sortie = fopen("output.txt", "w");
-    if (fichier_entree == NULL) {
+    if (fichier_entree == NULL)
+    {
         perror("Erreur lors de l'ouverture du fichier d'entrée");
         return 1;
     }
-    if (fichier_sortie == NULL) {
+    if (fichier_sortie == NULL)
+    {
         perror("Erreur lors de l'ouverture du fichier de sortie");
         return 1;
     }
 
-    if (analyse_syntaxique(fichier_entree, fichier_sortie)) {
+    if (analyse_syntaxique(fichier_entree, fichier_sortie))
+    {
         fprintf(fichier_sortie, "L'analyse syntaxique est réussie\n");
-    } else {
+    }
+    else
+    {
         fprintf(fichier_sortie, "Il y a une erreur syntaxique dans le fichier\n");
     }
 
     fclose(fichier_entree);
     fclose(fichier_sortie);
+
     return 0;
 }
+
+
+
