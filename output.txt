@@ -1,18 +1,6 @@
 (balise_ouvrante, "<document>")
 (balise_ouvrante, "<section>")
-(mot, "Bonjour")
-(mot, "le")
-(mot, "Monde.")
 (balise_fermante, "</section>")
 (balise_fermante, "</document>")
-(balise_ouvrante, "<annexe>")
-(mot, "Auteur")
-(mot, ":")
-(mot, "Weinberg")
-(mot, "Benjamin")
-(mot, "Date")
-(mot, ":")
-(mot, "23/01/2024")
-(balise_fermante, "</annexe>")
-L'analyse syntaxique est correcte.
-L'analyse syntaxique est réussie
+Il y a une errEur syntaxique dans le fichier.
+Il y a une erreur syntaxique dans le fichier

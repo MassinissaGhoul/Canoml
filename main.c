@@ -23,7 +23,7 @@ typedef enum
 } type_balise;
 
 typedef struct
-{
+{;
     type_balise type;
     char valeur[81];
 } balise;

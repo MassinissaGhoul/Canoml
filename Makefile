@@ -1,8 +1,8 @@
-canoml: main.o 
-	gcc -o canoml main.o 
+canoml: main2.o 
+	gcc -o canoml main2.o 
 
-main.o: main.c
-	gcc -c main.c
+main2.o: main2.c
+	gcc -c main2.c
 
 
 ifneq ($(OS),Windows_NT)
