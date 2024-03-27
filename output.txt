@@ -1,6 +1,23 @@
 (balise_ouvrante, "<document>")
 (balise_ouvrante, "<section>")
+(mot, "Bonjour")
+(mot, "le")
+(mot, "Monde.
+")
 (balise_fermante, "</section>")
 (balise_fermante, "</document>")
-Il y a une errEur syntaxique dans le fichier.
-Il y a une erreur syntaxique dans le fichier
+(balise_ouvrante, "<annexes>")
+(balise_ouvrante, "<annexes>")
+(mot, "Auteur")
+(mot, ":")
+(mot, "Weinberg")
+(mot, "Benjamin
+")
+(mot, "Date")
+(mot, ":")
+(mot, "23/01/2024
+")
+(balise_ouvrante, "</annexes>")
+(balise_ouvrante, "</annexes>")
+L'analyse syntaxique est COrrecte.
+L'analyse syntaxique est réussie

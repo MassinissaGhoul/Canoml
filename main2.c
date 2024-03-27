@@ -39,6 +39,7 @@ int analyse_titre(FILE *fichier_entree, FILE *fichier_sortie);
 int analyse_liste(FILE *fichier_entree, FILE *fichier_sortie);
 int analyse_item(FILE *fichier_entree, FILE *fichier_sortie);
 int analyse_important(FILE *fichier_entree, FILE *fichier_sortie);
+int analyse_annexes(FILE *fichier_entree, FILE *fichier_sortie);
 
 int main()
 {
@@ -70,14 +71,27 @@ int main()
     return 0;
 }
 
+void skip_spaces(FILE *fichier_entree)
+{
+    int c;
+    do
+    {
+        c = fgetc(fichier_entree);
+    } while (c == ' ' || c == '\n' || c == '\t' || c == '\r');
+    ungetc(c, fichier_entree);
+}
+
 balise lire_mot(FILE *fichier_entree, char *buffer, int taille_buffer)
 {
     balise b;
     char c;
     int i = 0;
     char *tag[14] = {"<document>", "</document>", "<annexe>", "</annexe>", "<section>", "</section>", "<titre>", "</titre>", "<liste>", "</liste>", "<item>", "</item>", "<important>", "</important>"};
+
     do
     {
+        skip_spaces(fichier_entree);
+
         c = fgetc(fichier_entree);
     } while (c == ' ' || c == '\n' || c == '\t' || c == '\r');
 
@@ -112,6 +126,14 @@ balise lire_mot(FILE *fichier_entree, char *buffer, int taille_buffer)
         {
             buffer[i++] = c;
             c = fgetc(fichier_entree);
+            if (c == ' ')
+            {
+                buffer[i] = '\0';
+                strcpy(b.valeur, buffer);
+                b.type = MOT_SIMPLE;
+                ungetc(c, fichier_entree);
+                return b;
+            }
         } while (c != '<' && c != EOF);
         buffer[i] = '\0';
         if (strcmp(buffer, "retour_a_la_ligne") == 0)
@@ -140,6 +162,11 @@ int analyse_syntaxique(FILE *fichier_entree, FILE *fichier_sortie)
         correct = 0;
     }
 
+    if (!analyse_annexe(fichier_entree, fichier_sortie))
+    {
+        correct = 0;
+    }
+
     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
 
     if (b.type != FINITO)
@@ -163,10 +190,8 @@ int analyse_document(FILE *fichier_entree, FILE *fichier_sortie)
 {
     balise b;
     char buffer[81];
-    printf("B VALEUR doc av=%s\n", b.valeur);
 
     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-    printf("B VALEUR doc ap=%s\n", b.valeur);
 
     if (b.type != DEBUT_DOC)
     {
@@ -177,28 +202,22 @@ int analyse_document(FILE *fichier_entree, FILE *fichier_sortie)
     while (1)
     {
         b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-        printf("B VALEUR doc in =%s\n", b.valeur);
-
+        printf("b.valeur %s\n", b.valeur);
         if (b.type == FIN_DOC)
         {
-            printf("FIN_DOC\n");
             break;
         }
-        else if (b.type == DEBUT_ANNEXE)
-        {
-            printf("DEBUT_ANNEXE\n");
-            if (!analyse_annexe(fichier_entree, fichier_sortie))
-            {
-                printf("ANEX PROK\n");
-                return 0;
-            }
-        }
+        // else if (b.type == DEBUT_ANNEXE)
+        // {
+        //     if (!analyse_annexe(fichier_entree, fichier_sortie))
+        //     {
+        //         return 0;
+        //     }
+        // }
         else if (b.type == DEBUT_SECTION)
         {
-            printf("DEBUT_SECTION\n");
             if (!analyse_section(fichier_entree, fichier_sortie))
             {
-                printf("SECTION PROK\n");
                 return 0;
             }
         }
@@ -218,50 +237,80 @@ int analyse_annexe(FILE *fichier_entree, FILE *fichier_sortie)
     balise b;
     char buffer[81];
 
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+    fprintf(fichier_sortie, "(balise_ouvrante, \"<annexes>\")\n");
 
-    if (b.type != DEBUT_ANNEXE)
+    while (1)
     {
-        return 0;
+
+        b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+
+        if (b.type == FINITO || b.type == FIN_ANNEXE)
+        {
+            break;
+        }
+        else if (b.type == DEBUT_ANNEXE)
+        {
+            if (!analyse_annexe(fichier_entree, fichier_sortie))
+            {
+                return 0;
+            }
+        }
+        else if (b.type == MOT_SIMPLE)
+        {
+            fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
+        }
+        
+        else
+        {
+            return 1;
+        }
     }
-    fprintf(fichier_sortie, "(balise_ouvrante, \"<annexe>\")\n");
+    fprintf(fichier_sortie, "(balise_ouvrante, \"</annexes>\")\n");
 
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-    if (b.type != MOT_SIMPLE)
-    {
-        return 0;
-    }
-    fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
-
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-
-    if (b.type != FIN_ANNEXE)
-    {
-        return 0;
-    }
-
-    fprintf(fichier_sortie, "(balise_fermante, \"</annexe>\")\n");
     return 1;
 }
+
+// int analyse_annexes(FILE *fichier_entree, FILE *fichier_sortie)
+// {
+//     balise b;
+//     char buffer[81];
+
+//     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+
+//     if (b.type != DEBUT_ANNEXE)
+//     {
+//         return 0;
+//     }
+//     fprintf(fichier_sortie, "(balise_ouvrante, \"<annexe>\")\n");
+
+//     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+//     if (b.type != MOT_SIMPLE)
+//     {
+//         return 0;
+//     }
+//     fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
+
+//     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+
+//     if (b.type != FIN_ANNEXE)
+//     {
+//         return 0;
+//     }
+
+//     fprintf(fichier_sortie, "(balise_fermante, \"</annexe>\")\n");
+//     return 1;
+// }
 
 int analyse_section(FILE *fichier_entree, FILE *fichier_sortie)
 {
     balise b;
     char buffer[81];
-    printf("B VALEUR=%s\n", b.valeur);
-
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-    printf("b.type = %d\n", b.type);
-    printf("BUFFER = %s\n", buffer);
-    printf("B VALEURAJIAA=%s\n", b.valeur);
-
     fprintf(fichier_sortie, "(balise_ouvrante, \"<section>\")\n");
 
     while (1)
     {
         b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-        printf("b.typZE = %d\n", b.type);
-        printf("b VALEURER = %s\n", b.valeur);
+
         if (b.type == FIN_SECTION)
         {
             break;
