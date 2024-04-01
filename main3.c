@@ -189,14 +189,6 @@ void lire_token(element* e) {
     }
 }
 
-
-
-
-
-
-
-
-
 void consommer(element* e, char caractere) {
     if (e->charac == caractere) {
         lire_caractere(e);
