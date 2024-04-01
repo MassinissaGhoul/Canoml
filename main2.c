@@ -34,12 +34,20 @@ balise lire_mot(FILE *fichier_entree, char *buffer, int taille_buffer);
 int analyse_syntaxique(FILE *fichier_entree, FILE *fichier_sortie);
 int analyse_document(FILE *fichier_entree, FILE *fichier_sortie);
 int analyse_annexe(FILE *fichier_entree, FILE *fichier_sortie);
-int analyse_section(FILE *fichier_entree, FILE *fichier_sortie);
+int analyse_section(FILE *fichier_entree, FILE *fichier_sortie, balise b);
 int analyse_titre(FILE *fichier_entree, FILE *fichier_sortie);
 int analyse_liste(FILE *fichier_entree, FILE *fichier_sortie);
 int analyse_item(FILE *fichier_entree, FILE *fichier_sortie);
 int analyse_important(FILE *fichier_entree, FILE *fichier_sortie);
-int analyse_annexes(FILE *fichier_entree, FILE *fichier_sortie);
+void skip_spaces(FILE *fichier_entree);
+void writeBalise(FILE* fichier_entree, FILE* fichier_sortie, balise b);
+int detectTag(FILE* fichier_entree, FILE* fichier_sortie, balise b);
+
+
+
+
+
+// int analyse_annexes(FILE *fichier_entree, FILE *fichier_sortie);
 
 int main()
 {
@@ -176,15 +184,17 @@ int analyse_syntaxique(FILE *fichier_entree, FILE *fichier_sortie)
 
     if (!correct)
     {
-        fprintf(fichier_sortie, "Il y a une errEur syntaxique dans le fichier.\n");
+        fprintf(fichier_sortie, "Il y a une erreur syntaxique dans le fichier.\n");
     }
     else
     {
-        fprintf(fichier_sortie, "L'analyse syntaxique est COrrecte.\n");
+        fprintf(fichier_sortie, "L'analyse syntaxique est correcte.\n");
     }
 
     return correct;
 }
+
+
 
 int analyse_document(FILE *fichier_entree, FILE *fichier_sortie)
 {
@@ -207,46 +217,12 @@ int analyse_document(FILE *fichier_entree, FILE *fichier_sortie)
         {
             break;
         }
-        // else if (b.type == DEBUT_ANNEXE)
-        // {
-        //     if (!analyse_annexe(fichier_entree, fichier_sortie))
-        //     {
-        //         return 0;
-        //     }
-        // }
         else if (b.type == DEBUT_SECTION)
         {
-            if (!analyse_section(fichier_entree, fichier_sortie))
+            if (!analyse_section(fichier_entree, fichier_sortie, b))
             {
                 return 0;
             }
-        }
-        else
-        {
-            printf("else\n");
-            return 0;
-        }
-    }
-
-    fprintf(fichier_sortie, "(balise_fermante, \"</document>\")\n");
-    return 1;
-}
-
-int analyse_annexe(FILE *fichier_entree, FILE *fichier_sortie)
-{
-    balise b;
-    char buffer[81];
-
-    fprintf(fichier_sortie, "(balise_ouvrante, \"<annexes>\")\n");
-
-    while (1)
-    {
-
-        b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-
-        if (b.type == FINITO || b.type == FIN_ANNEXE)
-        {
-            break;
         }
         else if (b.type == DEBUT_ANNEXE)
         {
@@ -255,51 +231,91 @@ int analyse_annexe(FILE *fichier_entree, FILE *fichier_sortie)
                 return 0;
             }
         }
-        else if (b.type == MOT_SIMPLE)
+        else if (b.type == DEBUT_TITRE)
         {
-            fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
+            if (!analyse_titre(fichier_entree, fichier_sortie))
+            {
+                return 0;
+            }
         }
-        
         else
         {
-            return 1;
+            return 0;
         }
     }
-    fprintf(fichier_sortie, "(balise_ouvrante, \"</annexes>\")\n");
 
+    fprintf(fichier_sortie, "(balise_fermante, \"</document>\")\n");
     return 1;
 }
+
 
 // int analyse_annexes(FILE *fichier_entree, FILE *fichier_sortie)
 // {
 //     balise b;
 //     char buffer[81];
 
-//     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+//     fprintf(fichier_sortie, "(balise_ouvrante, \"<annexes>\")\n");
 
-//     if (b.type != DEBUT_ANNEXE)
+//     while (1)
 //     {
-//         return 0;
+//         b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+
+//         if (b.type == FINITO || b.type == FIN_ANNEXE)
+//         {
+//             break;
+//         }
+//         else if (b.type == DEBUT_ANNEXE)
+//         {
+//             if (!analyse_annexe(fichier_entree, fichier_sortie))
+//             {
+//                 return 0;
+//             }
+//         }
+//         else
+//         {
+//             return 1;
+//         }
 //     }
-//     fprintf(fichier_sortie, "(balise_ouvrante, \"<annexe>\")\n");
 
-//     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-//     if (b.type != MOT_SIMPLE)
-//     {
-//         return 0;
-//     }
-//     fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
+//     fprintf(fichier_sortie, "(balise_fermante, \"</annexes>\")\n");
 
-//     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-
-//     if (b.type != FIN_ANNEXE)
-//     {
-//         return 0;
-//     }
-
-//     fprintf(fichier_sortie, "(balise_fermante, \"</annexe>\")\n");
 //     return 1;
 // }
+
+int analyse_annexe(FILE *fichier_entree, FILE *fichier_sortie)
+{
+    balise b;
+    char buffer[81];
+
+    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+
+    if (b.type != DEBUT_ANNEXE)
+    {
+        return 0;
+    }
+    fprintf(fichier_sortie, "(balise_ouvrante, \"<annexe>\")\n");
+
+    while (1)
+    {
+        b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+
+        if (b.type == FIN_ANNEXE)
+        {
+            break;
+        }
+        else if (b.type == MOT_SIMPLE)
+        {
+            fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    fprintf(fichier_sortie, "(balise_fermante, \"</annexe>\")\n");
+    return 1;
+}
 
 int analyse_section(FILE *fichier_entree, FILE *fichier_sortie)
 {
@@ -310,7 +326,7 @@ int analyse_section(FILE *fichier_entree, FILE *fichier_sortie)
     while (1)
     {
         b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-
+        printf("b.valeur = %s", b.valeur);
         if (b.type == FIN_SECTION)
         {
             break;
@@ -318,6 +334,13 @@ int analyse_section(FILE *fichier_entree, FILE *fichier_sortie)
         else if (b.type == MOT_SIMPLE)
         {
             fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
+        }
+        else if (b.type == DEBUT_TITRE)
+        {
+            if (!analyse_titre(fichier_entree, fichier_sortie))
+            {
+                return 0;
+            }
         }
         else
         {
@@ -329,32 +352,39 @@ int analyse_section(FILE *fichier_entree, FILE *fichier_sortie)
     return 1;
 }
 
+// int analyse_section(FILE *fichier_entree, FILE *fichier_sortie, balise b){
+//     writeBalise(fichier_entree, fichier_sortie, b);
+//     b = lire_mot(fichier_entree, b.valeur, sizeof(b.valeur));
+//     detectTag(fichier_entree, fichier_sortie, b);
+
+// }
+
 int analyse_titre(FILE *fichier_entree, FILE *fichier_sortie)
 {
     balise b;
     char buffer[81];
 
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-
-    if (b.type != DEBUT_TITRE)
-    {
-        return 0;
-    }
     fprintf(fichier_sortie, "(balise_ouvrante, \"<titre>\")\n");
 
-    // Vérifier que le contenu du titre est un mot simple
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-    if (b.type != MOT_SIMPLE)
-    {
-        return 0;
-    }
-    fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
 
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-
-    if (b.type != FIN_TITRE)
+    while(1)
     {
-        return 0;
+        b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+
+
+        if (b.type == FIN_TITRE)
+        {
+            break;
+        }
+        else if (b.type == MOT_SIMPLE)
+        {
+            fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
+
+        }
+        else
+        {
+            return 0;
+        }
     }
 
     fprintf(fichier_sortie, "(balise_fermante, \"</titre>\")\n");
@@ -366,15 +396,8 @@ int analyse_liste(FILE *fichier_entree, FILE *fichier_sortie)
     balise b;
     char buffer[81];
 
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
-
-    if (b.type != DEBUT_LISTE)
-    {
-        return 0;
-    }
     fprintf(fichier_sortie, "(balise_ouvrante, \"<liste>\")\n");
 
-    // Vérifier que le contenu de la liste est une séquence d'items
     while (1)
     {
         b = lire_mot(fichier_entree, buffer, sizeof(buffer));
@@ -405,16 +428,11 @@ int analyse_item(FILE *fichier_entree, FILE *fichier_sortie)
     balise b;
     char buffer[81];
 
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
 
-    if (b.type != DEBUT_ITEM)
-    {
-        return 0;
-    }
     fprintf(fichier_sortie, "(balise_ouvrante, \"<item>\")\n");
 
-    // Vérifier que le contenu de l'item est un mot simple
     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+
     if (b.type != MOT_SIMPLE)
     {
         return 0;
@@ -437,16 +455,11 @@ int analyse_important(FILE *fichier_entree, FILE *fichier_sortie)
     balise b;
     char buffer[81];
 
-    b = lire_mot(fichier_entree, buffer, sizeof(buffer));
 
-    if (b.type != DEBUT_IMPORTANT)
-    {
-        return 0;
-    }
     fprintf(fichier_sortie, "(balise_ouvrante, \"<important>\")\n");
 
-    // Vérifier que le contenu de la balise importante est un mot simple
     b = lire_mot(fichier_entree, buffer, sizeof(buffer));
+
     if (b.type != MOT_SIMPLE)
     {
         return 0;
@@ -463,3 +476,69 @@ int analyse_important(FILE *fichier_entree, FILE *fichier_sortie)
     fprintf(fichier_sortie, "(balise_fermante, \"</important>\")\n");
     return 1;
 }
+
+
+
+int detectTag(FILE* fichier_entree, FILE* fichier_sortie, balise b){
+
+    switch(b.type){
+        case DEBUT_DOC:
+        case FIN_DOC:
+            analyse_document(fichier_entree, fichier_sortie);
+            break;
+        case DEBUT_SECTION:
+        case FIN_SECTION:
+            analyse_section(fichier_entree, fichier_sortie, b);
+            break;
+        case DEBUT_ANNEXE:
+        case FIN_ANNEXE:
+            analyse_annexe(fichier_entree, fichier_sortie);
+            break;
+        case DEBUT_TITRE:
+        case FIN_TITRE:
+            analyse_titre(fichier_entree, fichier_sortie);
+            break;
+        case DEBUT_LISTE:
+        case FIN_LISTE:
+            analyse_liste(fichier_entree, fichier_sortie);
+            break;
+        case DEBUT_ITEM:
+        case FIN_ITEM:
+            analyse_item(fichier_entree, fichier_sortie);
+            break;
+        case DEBUT_IMPORTANT:
+        case FIN_IMPORTANT:
+            analyse_important(fichier_entree, fichier_sortie);
+            break;
+        case MOT_SIMPLE:
+            fprintf(fichier_sortie, "(mot, \"%s\")\n", b.valeur);
+            break;
+        
+    }
+}
+
+void writeBalise(FILE* fichier_entree, FILE* fichier_sortie, balise b)
+{
+    switch (b.type)
+    {
+    case DEBUT_DOC:
+    case DEBUT_ANNEXE:
+    case DEBUT_SECTION:
+    case DEBUT_TITRE:
+    case DEBUT_LISTE:
+    case DEBUT_ITEM:
+    case DEBUT_IMPORTANT:
+        fprintf(fichier_sortie, "(balise_ouvrante, \"%s\")\n", b.valeur);
+        break;
+    case FIN_DOC:
+    case FIN_ANNEXE:
+    case FIN_SECTION:
+    case FIN_TITRE:
+    case FIN_LISTE:
+    case FIN_ITEM:
+    case FIN_IMPORTANT:
+        fprintf(fichier_sortie, "(balise_fermante, \"%s\")\n", b.valeur);
+        break;    
+    }
+}
+
