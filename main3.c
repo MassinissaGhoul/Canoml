@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 typedef enum {
     BALISE_INCONNUE,
     BALISE_DOCUMENT,
@@ -19,17 +18,31 @@ typedef enum {
     BALISE_FIN_SECTION,
     BALISE_ITEM,
     BALISE_FIN_ITEM,
-    BALISE_RETOUR_LIGNE
+    BALISE_RETOUR_LIGNE,
+    BALISE_TEXTE // Ajouter cette ligne
 } balise_t;
+
+
+typedef struct Node {
+    balise_t balise;
+    char* contenu;
+    int nb_enfants;
+    struct Node** enfants;
+} Node;
 
 typedef struct {
     FILE* fichier;
     int charac;
-    balise_t balise_actuelle; 
+    balise_t balise_actuelle;
     FILE* output;
+    Node* noeud_courant;
+    Node* noeud_racine;
 } element;
 
 
+Node* creer_noeud(balise_t balise, char* contenu);
+void ajouter_enfant(Node* parent, Node* enfant);
+void ecrire_arbre(FILE* output, Node* noeud);
 
 void ouverture(element* e, char* nom_fichier);
 void fermeture(element* e);
@@ -52,26 +65,106 @@ void mot_enrichi(element* e);
 void mot_important(element* e);
 void mot_simple(element* e);
 void fermeture_balise(element* e, int balise_contenante);
+// void afficher_arbre_avec_indentation(Node* noeud, char* prefix, FILE* fichier, int estDernier);
+void afficher_arbre(Node* noeud, int profondeur, FILE* fichier);
+void printNodeData(Node* noeud, int level);
+void printBox(Node *node, int level, FILE* fichier);
+char* getNodeContent(Node* noeud);
+
+Node* creer_noeud(balise_t balise, char* contenu) {
+    printf("balise = %d\n", balise);
+    printf("contenu = %s\n", contenu);
+    Node* noeud = malloc(sizeof(Node));
+    noeud->balise = balise;
+    noeud->contenu = contenu;
+    noeud->nb_enfants = 0;
+    noeud->enfants = NULL;
+    return noeud;
+}
+
+void ajouter_enfant(Node* parent, Node* enfant) {
+    parent->nb_enfants++;
+    parent->enfants = realloc(parent->enfants, sizeof(Node*) * parent->nb_enfants);
+    parent->enfants[parent->nb_enfants - 1] = enfant;
+}
+
+void ecrire_arbre(FILE* output, Node* noeud) {
+    if (noeud == NULL) {
+        return;
+    }
+    switch (noeud->balise) {
+        case BALISE_DOCUMENT:
+            fprintf(output, "<document>\n");
+            break;
+        case BALISE_FIN_DOCUMENT:
+            fprintf(output, "</document>\n");
+            break;
+        case BALISE_ANNEXE:
+            fprintf(output, "<annexe>\n");
+            break;
+        case BALISE_FIN_ANNEXE:
+            fprintf(output, "</annexe>\n");
+            break;
+        case BALISE_TITRE:
+            fprintf(output, "<titre>\n");
+            break;
+        case BALISE_FIN_TITRE:
+            fprintf(output, "</titre>\n");
+            break;
+        case BALISE_LISTE:
+            fprintf(output, "<liste>\n");
+            break;
+        case BALISE_FIN_LISTE:
+            fprintf(output, "</liste>\n");
+            break;
+        case BALISE_MOT_IMPORTANT:
+            fprintf(output, "<mot_important>%s</mot_important>\n", noeud->contenu);
+            break;
+        case BALISE_SECTION:
+            fprintf(output, "<section>\n");
+            break;
+        case BALISE_FIN_SECTION:
+            fprintf(output, "</section>\n");
+            break;
+        case BALISE_ITEM:
+            fprintf(output, "<item>\n");
+            break;
+        case BALISE_FIN_ITEM:
+            fprintf(output, "</item>\n");
+            break;
+        case BALISE_RETOUR_LIGNE:
+            fprintf(output, "<br/>\n");
+            break;
+        case BALISE_TEXTE:
+            fprintf(output, "%s\n", noeud->contenu);
+            break;
+        default:
+            fprintf(output, "balise inconnue\n");
+            break;
+    }
+    for (int i = 0; i < noeud->nb_enfants; i++) {
+        ecrire_arbre(output, noeud->enfants[i]);
+    }
+}
+
 
 void ouverture(element* e, char* nom_fichier){
     e->fichier = fopen(nom_fichier, "r");
     if(e->fichier == NULL){
         exit(-1);
     }
-    e->output = fopen("output.txt", "w"); 
-
+    e->output = fopen("output.txt", "w");
     fprintf(e->output, "fdfdfd");
     lire_caractere(e);
 }
 
-
 void fermeture(element* e){
+    ecrire_arbre(e->output, e->noeud_courant);
     fclose(e->fichier);
-    fclose(e->output); 
+    fclose(e->output);
 }
 
 void lire_caractere(element* e){
-    // printf("carac = %c\n", e->charac);
     e->charac = fgetc(e->fichier);
 }
 
@@ -160,11 +253,10 @@ void update_balise_actuelle(element* e, char* token) {
             break;
         default:
             printf("\nERREUR :balise non existante: %s . \n", token);
-            e->balise_actuelle = BALISE_INCONNUE; 
+            e->balise_actuelle = BALISE_INCONNUE;
             exit(-1);
     }
 }
-
 
 void lire_token(element* e) {
     char token[20];
@@ -177,12 +269,16 @@ void lire_token(element* e) {
     }
 
     if (e->charac == '>') {
-        token[i] = '>'; 
-        token[i+1] = '\0'; 
-        printf("token AP = %s>\n", token); 
+        token[i] = '>';
+        token[i+1] = '\0';
+        printf("token AP = %s>\n", token);
         consommer(e, '>');
         update_balise_actuelle(e, token);
         fprintf(e->output, "%s", token);
+
+        Node* noeud = creer_noeud(get_balise(token), "");
+        ajouter_enfant(e->noeud_courant, noeud);
+        e->noeud_courant = noeud;
     } else {
         printf("Erreur: caractère '>' non trouvé\n");
         exit(-1);
@@ -215,12 +311,15 @@ void texte_enrichi(element* e){
 }
 
 void document(element* e){
-    
+    Node* noeud = creer_noeud(BALISE_DOCUMENT, "");
+    e->noeud_racine = noeud;
+    e->noeud_courant = noeud;
     consommer_token(e, "<document>");
     passer_espace(e);
     contenu(e, BALISE_FIN_DOCUMENT);
     passer_espace(e);
 }
+
 
 void contenu(element* e , int balise_contenante){
     while (e->balise_actuelle != balise_contenante) {
@@ -321,15 +420,10 @@ void texte(element* e){
 }
 
 void liste(element* e){
-
-
     while(e->balise_actuelle != BALISE_FIN_LISTE) {
         passer_espace(e);
         if (e->charac == '<') {
-
-            
             lire_token(e);
-            printf("balise actuelle = %d\n", e->balise_actuelle);
             if (e->balise_actuelle == BALISE_FIN_LISTE) {
                 fermeture_balise(e, BALISE_FIN_LISTE);
                 break;
@@ -347,7 +441,6 @@ void liste(element* e){
 }
 
 void item(element* e){
-    printf("ITEMO\n");
     while(e->balise_actuelle != BALISE_FIN_ITEM) {
         if (e->charac == '<') {
             lire_token(e);
@@ -410,18 +503,30 @@ void mot_important(element* e){
     }
 }
 
-void mot_simple(element* e){
+void mot_simple(element* e) {
     char mot[100];
     int i = 0;
-    while (e->charac != ' ' && e->charac != '\n' && e->charac != '<' && e->charac != EOF) {
+    while (e->charac != ' ' && e->charac != '\n' && e->charac != '<' && e->charac != EOF && i < 99) {
         mot[i] = e->charac;
         lire_caractere(e);
         i++;
     }
-    mot[i] = '\0';
-    fprintf(e->output, "%s", mot); // Modifier cette ligne
+    mot[i] = '\0'; 
+    char* contenu = strdup(mot);
+    if (!contenu) {
+        fprintf(stderr, "Erreur d'allocation mémoire\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("mot = %s\n", contenu);
+
+    Node* noeud = creer_noeud(BALISE_TEXTE, contenu); 
+    ajouter_enfant(e->noeud_courant, noeud); 
+    fprintf(e->output, "%s ", contenu);
     passer_espace(e);
 }
+
+
 
 void fermeture_balise(element* e, int balise_contenante) {
     if (e->balise_actuelle != balise_contenante) {
@@ -429,15 +534,241 @@ void fermeture_balise(element* e, int balise_contenante) {
         exit(-1);
     }
 }
+void afficher_arbre(Node* noeud, int profondeur, FILE* fichier) {
+    if (noeud == NULL) {
+        return;
+    }
+    for (int i = 0; i < profondeur; i++) {
+        fprintf(fichier, "  ");
+    }
+    switch (noeud->balise) {
+        case BALISE_DOCUMENT:
+            fprintf(fichier, "<document>\n");
+            break;
+        case BALISE_FIN_DOCUMENT:
+            fprintf(fichier, "</document>\n");
+            break;
+        case BALISE_ANNEXE:
+            fprintf(fichier, "<annexe>\n");
+            break;
+        case BALISE_FIN_ANNEXE:
+            fprintf(fichier, "</annexe>\n");
+            break;
+        case BALISE_TITRE:
+            fprintf(fichier, "<titre>\n");
+            break;
+        case BALISE_FIN_TITRE:
+            fprintf(fichier, "</titre>\n");
+            break;
+        case BALISE_LISTE:
+            fprintf(fichier, "<liste>\n");
+            break;
+        case BALISE_FIN_LISTE:
+            fprintf(fichier, "</liste>\n");
+            break;
+        case BALISE_MOT_IMPORTANT:
+            fprintf(fichier, "<mot_important>%s</mot_important>\n", noeud->contenu);
+            break;
+        case BALISE_SECTION:
+            fprintf(fichier, "<section>\n");
+            break;
+        case BALISE_FIN_SECTION:
+            fprintf(fichier, "</section>\n");
+            break;
+        case BALISE_ITEM:
+            fprintf(fichier, "<item>\n");
+            break;
+        case BALISE_FIN_ITEM:
+            fprintf(fichier, "</item>\n");
+            break;
+        case BALISE_RETOUR_LIGNE:
+            fprintf(fichier, "<br/>\n");
+            break;
+        case BALISE_TEXTE:
+            fprintf(fichier, "%s\n", noeud->contenu); 
+            break; 
+        default:
+            fprintf(fichier, "balise inconnue\n");
+            break;
+    }
+    for (int i = 0; i < noeud->nb_enfants; i++) {
+        afficher_arbre(noeud->enfants[i], profondeur + 1, fichier);
+    }
+}
+// void afficher_arbre(Node* noeud, FILE* fichier, int profondeur, int dernier_enfant) {
+//     if (noeud == NULL) {
+//         return;
+//     }
+
+//     char symbole = dernier_enfant ? '└' : '├';
+//     char remplissage = dernier_enfant ? ' ' : '|';
+
+//     for (int i = 0; i < profondeur; i++) {
+//         fprintf(fichier, "%c   ", remplissage);
+//     }
+
+//     switch (noeud->balise) {
+//         case BALISE_DOCUMENT:
+//             fprintf(fichier, "%c── document\n", symbole);
+//             break;
+//         case BALISE_FIN_DOCUMENT:
+//             break;
+//         case BALISE_ANNEXE:
+//             fprintf(fichier, "%c── annexe\n", symbole);
+//             break;
+//         case BALISE_FIN_ANNEXE:
+//             break;
+//         case BALISE_TITRE:
+//             fprintf(fichier, "%c── titre\n", symbole);
+//             break;
+//         case BALISE_FIN_TITRE:
+//             break;
+//         case BALISE_LISTE:
+//             fprintf(fichier, "%c── liste\n", symbole);
+//             break;
+//         case BALISE_FIN_LISTE:
+//             break;
+//         case BALISE_MOT_IMPORTANT:
+//             fprintf(fichier, "%c── mot_important: %s\n", symbole, noeud->contenu);
+//             break;
+//         case BALISE_FIN_MOT_IMPORTANT:
+//             break;
+//         case BALISE_SECTION:
+//             fprintf(fichier, "%c── section\n", symbole);
+//             break;
+//         case BALISE_FIN_SECTION:
+//             break;
+//         case BALISE_ITEM:
+//             fprintf(fichier, "%c── item\n", symbole);
+//             break;
+//         case BALISE_FIN_ITEM:
+//             break;
+//         case BALISE_RETOUR_LIGNE:
+//             break;
+//         case BALISE_TEXTE:
+//             fprintf(fichier, "%c── %s\n", symbole, noeud->contenu);
+//             break;
+//         default:
+//             fprintf(fichier, "%c── balise inconnue\n", symbole);
+//             break;
+//     }
+
+//     for (int i = 0; i < noeud->nb_enfants; i++) {
+//         afficher_arbre(noeud->enfants[i], fichier, profondeur + 1, i == noeud->nb_enfants - 1);
+//     }
+// }
+
+
+
+
+char* getNodeContent(Node* noeud) {
+    // Vérifier si le nœud est NULL
+    if (!noeud) return "Nœud Vide";
+
+    // Buffer pour stocker le contenu du nœud
+    static char content[256];
+    memset(content, 0, sizeof(content));
+
+    switch (noeud->balise) {
+        case BALISE_DOCUMENT:
+            strcpy(content, "Document");
+            break;
+        case BALISE_ANNEXE:
+            strcpy(content, "Annexe");
+            break;
+        case BALISE_TITRE:
+            strcpy(content, "Titre");
+            break;
+        case BALISE_LISTE:
+            strcpy(content, "Liste");
+            break;
+        case BALISE_ITEM:
+            strcpy(content, "Item");
+            break;
+        case BALISE_SECTION:
+            strcpy(content, "Section");
+            break;
+        case BALISE_MOT_IMPORTANT:
+            sprintf(content, "Mot Important: %s", noeud->contenu);
+            break;
+        case BALISE_TEXTE:
+            sprintf(content, "%s", noeud->contenu);
+            break;
+        default:
+            strcpy(content, "Type Inconnu");
+            break;
+    }
+
+    return content;
+}
+
+
+
+void printBox(Node *node, int level, FILE* fichier) {
+    // Calculez l'indentation basée sur le niveau dans l'arbre
+    char indent[1024] = {0};
+    for (int i = 0; i < level; ++i) {
+        strcat(indent, "  ");
+    }
+
+    // Dessinez la bordure supérieure de la boîte
+    fprintf(fichier,"%s+----------------------------------------------+\n", indent);
+
+    // Imprimez le contenu du noeud ici
+    // Pour simplifier, disons que vous avez une fonction `getNodeContent`
+    // qui renvoie le contenu textuel ou le nom de la balise du noeud
+    char* content = getNodeContent(node); // Vous devez implémenter cette fonction
+    fprintf(fichier, "%s|%s|\n", indent, content);
+
+    // Parcourez les enfants du noeud et appliquez récursivement
+    for (int i = 0; i < node->nb_enfants; ++i) {
+        printBox(node->enfants[i], level + 1, fichier);
+    }
+
+    // Dessinez la bordure inférieure de la boîte
+    fprintf(fichier,"%s+----------------------------------------------+\n", indent);
+}
+
+
+void printNodeData(Node* noeud, int level) {
+    // Indentez en fonction de la profondeur du nœud dans l'arbre
+    for (int i = 0; i < level; ++i) {
+        printf("  ");
+    }
+
+    // Imprimez les données du nœud actuel
+    if (noeud->contenu != NULL) {
+        printf("Niveau %d, Balise: %d, Contenu: %s\n", level, noeud->balise, noeud->contenu);
+    } else {
+        printf("Niveau %d, Balise: %d, Contenu: Vide\n", level, noeud->balise);
+    }
+
+    // Parcourez récursivement et imprimez les données pour chaque enfant du nœud
+    for (int i = 0; i < noeud->nb_enfants; ++i) {
+        printNodeData(noeud->enfants[i], level + 1);
+    }
+}
+
 
 int main() {
     element e;
-
+    e.noeud_courant = NULL;
+    e.noeud_racine = NULL;
     ouverture(&e, "input.txt");
-
     texte_enrichi(&e);
-
     fermeture(&e);
+    FILE* fichier = fopen("arbre.txt", "w");
+    FILE* fichier2 = fopen("bloc.txt", "w");
+    // afficher_arbre(e.noeud_racine, fichier, 0, 1);
 
+    afficher_arbre(e.noeud_racine, 0, fichier);
+    printNodeData(e.noeud_racine, 0);
+    printBox(e.noeud_racine, 0, fichier2);
+
+    fclose(fichier2);
+
+    fclose(fichier);
     return 0;
 }
+
+
