@@ -70,6 +70,7 @@ void afficher_arbre(Node* noeud, int profondeur, FILE* fichier);
 void printNodeData(Node* noeud, int level);
 void printBox(Node *node, int level, FILE* fichier);
 char* getNodeContent(Node* noeud);
+void afficher_arbre_box(Node* noeud, int profondeur, FILE* fichier);
 
 Node* creer_noeud(balise_t balise, char* contenu) {
     printf("balise = %d\n", balise);
@@ -662,10 +663,8 @@ void afficher_arbre(Node* noeud, int profondeur, FILE* fichier) {
 
 
 char* getNodeContent(Node* noeud) {
-    // Vérifier si le nœud est NULL
     if (!noeud) return "Nœud Vide";
 
-    // Buffer pour stocker le contenu du nœud
     static char content[256];
     memset(content, 0, sizeof(content));
 
@@ -705,49 +704,110 @@ char* getNodeContent(Node* noeud) {
 
 
 void printBox(Node *node, int level, FILE* fichier) {
-    // Calculez l'indentation basée sur le niveau dans l'arbre
     char indent[1024] = {0};
     for (int i = 0; i < level; ++i) {
         strcat(indent, "  ");
     }
 
-    // Dessinez la bordure supérieure de la boîte
     fprintf(fichier,"%s+----------------------------------------------+\n", indent);
 
-    // Imprimez le contenu du noeud ici
-    // Pour simplifier, disons que vous avez une fonction `getNodeContent`
-    // qui renvoie le contenu textuel ou le nom de la balise du noeud
-    char* content = getNodeContent(node); // Vous devez implémenter cette fonction
+    char* content = getNodeContent(node); 
     fprintf(fichier, "%s|%s|\n", indent, content);
 
-    // Parcourez les enfants du noeud et appliquez récursivement
     for (int i = 0; i < node->nb_enfants; ++i) {
         printBox(node->enfants[i], level + 1, fichier);
     }
 
-    // Dessinez la bordure inférieure de la boîte
     fprintf(fichier,"%s+----------------------------------------------+\n", indent);
 }
 
 
 void printNodeData(Node* noeud, int level) {
-    // Indentez en fonction de la profondeur du nœud dans l'arbre
     for (int i = 0; i < level; ++i) {
         printf("  ");
     }
 
-    // Imprimez les données du nœud actuel
     if (noeud->contenu != NULL) {
         printf("Niveau %d, Balise: %d, Contenu: %s\n", level, noeud->balise, noeud->contenu);
     } else {
         printf("Niveau %d, Balise: %d, Contenu: Vide\n", level, noeud->balise);
     }
 
-    // Parcourez récursivement et imprimez les données pour chaque enfant du nœud
     for (int i = 0; i < noeud->nb_enfants; ++i) {
         printNodeData(noeud->enfants[i], level + 1);
     }
 }
+
+
+void afficher_arbre_box(Node* noeud, int profondeur, FILE* fichier) {
+    if (noeud == NULL) {
+        return;
+    }
+
+    int i;
+    for (i = 0; i < profondeur; i++) {
+        fprintf(fichier,"|  ");
+    }
+
+    switch (noeud->balise) {
+        case BALISE_DOCUMENT:
+            fprintf(fichier,"+------------------------------------------------+\n");
+            fprintf(fichier,"| DOCUMENT                                       |\n", noeud->contenu);
+            fprintf(fichier,"+------------------------------------------------+\n");
+            break;
+        case BALISE_TITRE:
+            fprintf(fichier,"+----------------------------------------------+\n");
+            fprintf(fichier,"| TITRE                                        |\n", noeud->contenu);
+            fprintf(fichier,"+----------------------------------------------+\n");
+            break;
+        case BALISE_SECTION:
+            fprintf(fichier,"+----------------------------------------------+\n");
+            fprintf(fichier,"| SECTION                                      |\n", noeud->contenu);
+            fprintf(fichier,"+----------------------------------------------+\n");
+            break;
+        case BALISE_LISTE:
+            fprintf(fichier,"+----------------------------------------------+\n");
+            fprintf(fichier,"| LISTE                                        |\n", noeud->contenu);
+            fprintf(fichier,"+----------------------------------------------+\n");
+            break;
+        case BALISE_ITEM:
+            fprintf(fichier,"+----------------------------------------------+\n");
+            fprintf(fichier,"| ITEM                                         |\n", noeud->contenu);
+            fprintf(fichier,"+----------------------------------------------+\n");
+            break;
+        case BALISE_ANNEXE:
+            fprintf(fichier,"+----------------------------------------------+\n");
+            fprintf(fichier,"| ANNEXE                                       |\n", noeud->contenu);
+            fprintf(fichier,"+----------------------------------------------+\n");
+            break;
+        case BALISE_MOT_IMPORTANT:
+            fprintf(fichier,"+----------------------------------------------+\n");
+            fprintf(fichier,"| Mot important : %s                           |\n", noeud->contenu);
+            fprintf(fichier,"+----------------------------------------------+\n");
+            break;
+        case BALISE_TEXTE:
+            fprintf(fichier,"| %s |\n", noeud->contenu);
+            break;
+        default:
+            fprintf(fichier,"+----------------------------------------------+\n");
+            fprintf(fichier,"| Balise inconnue                              |\n");
+            fprintf(fichier,"+----------------------------------------------+\n");
+            break;
+    }
+
+    for (i = 0; i < noeud->nb_enfants; i++) {
+        afficher_arbre_box(noeud->enfants[i], profondeur + 1, fichier);
+    }
+
+    if (noeud->balise == BALISE_TEXTE) {
+        for (i = 0; i < profondeur; i++) {
+            fprintf(fichier,"|  ");
+        }
+        fprintf(fichier,"+\n");
+    }
+}
+
+
 
 
 int main() {
@@ -763,12 +823,12 @@ int main() {
 
     afficher_arbre(e.noeud_racine, 0, fichier);
     printNodeData(e.noeud_racine, 0);
-    printBox(e.noeud_racine, 0, fichier2);
+    // printBox(e.noeud_racine, 0, fichier2);
+    afficher_arbre_box(e.noeud_racine, 0, fichier2);
+
 
     fclose(fichier2);
 
     fclose(fichier);
     return 0;
 }
-
-
