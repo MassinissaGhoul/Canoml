@@ -29,6 +29,8 @@ typedef struct Node
     char *contenu;
     int nb_enfants;
     struct Node **enfants;
+    struct Node *parent;
+    struct Node *frere;
 } Node;
 
 typedef struct
@@ -66,23 +68,32 @@ void mot_enrichi(element *e);
 void mot_important(element *e);
 void mot_simple(element *e);
 void fermeture_balise(element *e, int balise_contenante);
+void ajouter_frere(Node *noeud, Node *frere);
 // void afficher_arbre_avec_indentation(Node* noeud, char* prefix, FILE* fichier, int estDernier);
 void afficher_arbre(Node *noeud, int profondeur, FILE *fichier);
-void printNodeData(Node *noeud, int level);
+void printNodeData(Node *noeud, int level, Node *parent);
 void printBox(Node *node, int level, FILE *fichier);
 char *getNodeContent(Node *noeud);
 void afficher_arbre_box(Node *noeud, int profondeur, FILE *fichier);
 
+
+
 Node *creer_noeud(balise_t balise, char *contenu)
 {
-    printf("balise = %d\n", balise);
-    printf("contenu = %s\n", contenu);
     Node *noeud = malloc(sizeof(Node));
     noeud->balise = balise;
     noeud->contenu = contenu;
     noeud->nb_enfants = 0;
     noeud->enfants = NULL;
+    noeud->parent = NULL;
     return noeud;
+}
+
+void ajouter_frere(Node *noeud, Node *frere)
+{
+    frere->parent = noeud->parent;
+    frere->frere = noeud->frere;
+    noeud->frere = frere;
 }
 
 void ajouter_enfant(Node *parent, Node *enfant)
@@ -90,6 +101,7 @@ void ajouter_enfant(Node *parent, Node *enfant)
     parent->nb_enfants++;
     parent->enfants = realloc(parent->enfants, sizeof(Node *) * parent->nb_enfants);
     parent->enfants[parent->nb_enfants - 1] = enfant;
+    enfant->parent = parent;
 }
 
 void ecrire_arbre(FILE *output, Node *noeud)
@@ -225,6 +237,7 @@ void update_balise_actuelle(element *e, char *token)
     {
     case BALISE_DOCUMENT:
         e->balise_actuelle = BALISE_DOCUMENT;
+        
         break;
     case BALISE_FIN_DOCUMENT:
         e->balise_actuelle = BALISE_FIN_DOCUMENT;
@@ -295,8 +308,10 @@ void lire_token(element *e)
         consommer(e, '>');
         update_balise_actuelle(e, token);
         fprintf(e->output, "%s", token);
+        char *contenu = strdup(token);
 
-        Node *noeud = creer_noeud(get_balise(token), "");
+        printf(" ICICICIIC%s\n", token);
+        Node *noeud = creer_noeud(get_balise(token),contenu);
         ajouter_enfant(e->noeud_courant, noeud);
         e->noeud_courant = noeud;
     }
@@ -342,7 +357,7 @@ void texte_enrichi(element *e)
 
 void document(element *e)
 {
-    Node *noeud = creer_noeud(BALISE_DOCUMENT, "");
+    Node *noeud = creer_noeud(BALISE_DOCUMENT, " <document>");
     e->noeud_racine = noeud;
     e->noeud_courant = noeud;
     consommer_token(e, "<document>");
@@ -598,14 +613,24 @@ void mot_simple(element *e)
     passer_espace(e);
 }
 
-void fermeture_balise(element *e, int balise_contenante)
-{
-    if (e->balise_actuelle != balise_contenante)
-    {
-        printf("Erreur probleme fermeture: balise attendue: %d, balise trouvee: %d\n", balise_contenante, e->balise_actuelle);
-        exit(-1);
+void fermeture_balise(element *e, int balise_contenante) {
+    printf("Fermeture balise attendue: %d, balise courante: %d\n", balise_contenante, e->noeud_courant->balise);
+    while (e->noeud_courant->balise != balise_contenante) {
+        if (e->noeud_courant->parent == NULL) {
+            printf("Erreur: balise de fin manquante pour %d\n", balise_contenante);
+            exit(-1);
+        }
+        e->noeud_courant = e->noeud_courant->parent;
+    }
+    if (e->noeud_courant->parent != NULL) {
+        e->noeud_courant = e->noeud_courant->parent; // Remonter au parent
+    } else {
+        printf("Avertissement: la balise de fin pour %d est à la racine.\n", balise_contenante);
     }
 }
+
+
+
 void afficher_arbre(Node *noeud, int profondeur, FILE *fichier)
 {
     if (noeud == NULL)
@@ -798,7 +823,7 @@ void printBox(Node *node, int level, FILE *fichier)
     fprintf(fichier, "%s+----------------------------------------------+\n", indent);
 }
 
-void printNodeData(Node *noeud, int level)
+void printNodeData(Node *noeud, int level, Node *parent)
 {
     for (int i = 0; i < level; ++i)
     {
@@ -807,18 +832,35 @@ void printNodeData(Node *noeud, int level)
 
     if (noeud->contenu != NULL)
     {
-        printf("Niveau %d, Balise: %d, Contenu: %s\n", level, noeud->balise, noeud->contenu);
+        printf("Niveau %d, Balise: %d, Contenu: %s, Parent: ", level, noeud->balise, noeud->contenu);
+        if (parent != NULL)
+        {
+            printf("Niveau %d, Balise: %d, Contenu: %s\n", level - 1, parent->balise, parent->contenu);
+        }
+        else
+        {
+            printf("Racine\n");
+        }
     }
     else
     {
-        printf("Niveau %d, Balise: %d, Contenu: Vide\n", level, noeud->balise);
+        printf("Niveau %d, Balise: %d, Contenu: Vide, Parent: ", level, noeud->balise);
+        if (parent != NULL)
+        {
+            printf("Niveau %d, Balise: %d, Contenu: %s\n", level - 1, parent->balise, parent->contenu);
+        }
+        else
+        {
+            printf("Racine\n");
+        }
     }
 
     for (int i = 0; i < noeud->nb_enfants; ++i)
     {
-        printNodeData(noeud->enfants[i], level + 1);
+        printNodeData(noeud->enfants[i], level + 1, noeud);
     }
 }
+
 
 void afficher_arbre_box(Node *noeud, int profondeur, FILE *fichier)
 {
@@ -909,6 +951,32 @@ void afficher_arbre_box(Node *noeud, int profondeur, FILE *fichier)
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int main()
 {
     element e;
@@ -922,8 +990,7 @@ int main()
     // afficher_arbre(e.noeud_racine, fichier, 0, 1);
 
     afficher_arbre(e.noeud_racine, 0, fichier);
-    printNodeData(e.noeud_racine, 0);
-    // printBox(e.noeud_racine, 0, fichier2);
+    printNodeData(e.noeud_racine, 0, NULL);    // printBox(e.noeud_racine, 0, fichier2);
     afficher_arbre_box(e.noeud_racine, 0, fichier2);
 
     fclose(fichier2);
@@ -931,3 +998,6 @@ int main()
     fclose(fichier);
     return 0;
 }
+
+
+
