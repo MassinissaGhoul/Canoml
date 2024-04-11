@@ -761,78 +761,87 @@ void printNodeData(Node *noeud, int level, Node *parent)
 
 void afficher_arbre_box(Node *noeud, int profondeur, FILE *fichier)
 {
-    if (noeud == NULL)
-    {
-        return;
-    }
+    int longueur_ligne = 40;
 
-    int i;
+    for (int i = 0; i < profondeur; i++)
+    {
+        fprintf(fichier,"|  ");
+    }
 
     switch (noeud->balise)
     {
-        case BALISE_DOCUMENT:
-            fprintf(fichier, "+------------------------------------------------+\n");
-            break;
-        case BALISE_TITRE:
-        case BALISE_SECTION:
-        case BALISE_ANNEXE:
-            fprintf(fichier, "+----------------------------------------------+\n");
-            fprintf(fichier, "|");
-            for (int j = 0; j < strlen(noeud->contenu); j++)
-            {
-                if (noeud->contenu[j] == '<')
-                {
-                    j++;
-                    while (noeud->contenu[j] != '>' && noeud->contenu[j] != '\0')
-                    {
-                        fprintf(fichier, "%c", noeud->contenu[j]);
-                        j++;
-                    }
-                }
-                else
-                {
-                    fprintf(fichier, " %c", noeud->contenu[j]);
-                }
-            }
-            fprintf(fichier, " |\n");
-            break;
-        case BALISE_LISTE:
-        case BALISE_ITEM:
-            fprintf(fichier, "+----------------------------------------------+\n");
-            break;
-        case BALISE_TEXTE:
-            fprintf(fichier, "| %s |\n", noeud->contenu);
-            break;
-        default:
-            fprintf(fichier, "+----------------------------------------------+\n");
-            break;
+    case BALISE_DOCUMENT:
+        fprintf(fichier,"+------------------------------------------------+\n");
+        break;
+    case BALISE_TITRE:
+    {
+        int longueur_titre = strlen(noeud->contenu);
+        int espaces_avant = (longueur_ligne - longueur_titre) / 2;
+        int espaces_apres = longueur_ligne - longueur_titre - espaces_avant;
+
+        for (int i = 0; i < espaces_avant; i++)
+        {
+            fprintf(fichier," ");
+        }
+
+        fprintf(fichier,"%s", noeud->contenu);
+
+        for (int i = 0; i < espaces_apres; i++)
+        {
+            fprintf(fichier," ");
+        }
+
+        fprintf(fichier,"\n");
+
+        for (int i = 0; i < profondeur; i++)
+        {
+            fprintf(fichier,"|  ");
+        }
+
+        fprintf(fichier,"+------------------------------------------------+\n");
+        break;
+    }
+    case BALISE_SECTION:
+        fprintf(fichier,"+----------------------------------------------+\n");
+        break;
+    case BALISE_LISTE:
+        fprintf(fichier,"+----------------------------------------------+\n");
+        break;
+    case BALISE_ITEM:
+        fprintf(fichier,"#  ");
+        break;
+    case BALISE_TEXTE:
+        fprintf(fichier,"%s\n", noeud->contenu);
+        break;
+    default:
+        break;
     }
 
-    for (i = 0; i < noeud->nb_enfants; i++)
+    for (int i = 0; i < noeud->nb_enfants; i++)
     {
         afficher_arbre_box(noeud->enfants[i], profondeur + 1, fichier);
     }
 
-
+    for (int i = 0; i < profondeur; i++)
+    {
+        fprintf(fichier,"|  ");
+    }
 
     switch (noeud->balise)
     {
-        case BALISE_DOCUMENT:
-            fprintf(fichier, "+------------------------------------------------+\n");
-            break;
-        case BALISE_TITRE:
-        case BALISE_SECTION:
-        case BALISE_ANNEXE:
-        case BALISE_LISTE:
-        case BALISE_ITEM:
-            fprintf(fichier, "+----------------------------------------------+\n");
-            break;
-        default:
-            fprintf(fichier, "+----------------------------------------------+\n");
-            break;
+    case BALISE_DOCUMENT:
+        fprintf(fichier,"+------------------------------------------------+\n");
+        break;
+    case BALISE_SECTION:
+        fprintf(fichier,"+----------------------------------------------+\n");
+        break;
+    case BALISE_LISTE:
+        fprintf(fichier,"+----------------------------------------------+\n");
+        break;
+    default:
+        break;
     }
 }
-
 
 
 
