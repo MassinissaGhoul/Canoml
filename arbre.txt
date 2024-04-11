@@ -52,13 +52,14 @@
                       </titre>
                       </section>
                       </document>
-                      Auteur
-                      :
-                      Weinberg
-                      Benjamin
-                      <br/>
-                        Date
+                      <annexe>
+                        Auteur
                         :
-                        23/01/2024
+                        Weinberg
+                        Benjamin
                         <br/>
-                          </annexe>
+                          Date
+                          :
+                          23/01/2024
+                          <br/>
+                            </annexe>

@@ -20,7 +20,7 @@ typedef enum
     BALISE_ITEM,
     BALISE_FIN_ITEM,
     BALISE_RETOUR_LIGNE,
-    BALISE_TEXTE // Ajouter cette ligne
+    BALISE_TEXTE 
 } balise_t;
 
 typedef struct Node
@@ -30,7 +30,6 @@ typedef struct Node
     int nb_enfants;
     struct Node **enfants;
     struct Node *parent;
-    struct Node *frere;
 } Node;
 
 typedef struct
@@ -68,12 +67,9 @@ void mot_enrichi(element *e);
 void mot_important(element *e);
 void mot_simple(element *e);
 void fermeture_balise(element *e, int balise_contenante);
-void ajouter_frere(Node *noeud, Node *frere);
 // void afficher_arbre_avec_indentation(Node* noeud, char* prefix, FILE* fichier, int estDernier);
 void afficher_arbre(Node *noeud, int profondeur, FILE *fichier);
 void printNodeData(Node *noeud, int level, Node *parent);
-void printBox(Node *node, int level, FILE *fichier);
-char *getNodeContent(Node *noeud);
 void afficher_arbre_box(Node *noeud, int profondeur, FILE *fichier);
 
 
@@ -89,12 +85,6 @@ Node *creer_noeud(balise_t balise, char *contenu)
     return noeud;
 }
 
-void ajouter_frere(Node *noeud, Node *frere)
-{
-    frere->parent = noeud->parent;
-    frere->frere = noeud->frere;
-    noeud->frere = frere;
-}
 
 void ajouter_enfant(Node *parent, Node *enfant)
 {
@@ -103,6 +93,8 @@ void ajouter_enfant(Node *parent, Node *enfant)
     parent->enfants[parent->nb_enfants - 1] = enfant;
     enfant->parent = parent;
 }
+
+
 
 void ecrire_arbre(FILE *output, Node *noeud)
 {
@@ -325,13 +317,12 @@ void lire_token(element *e)
 void consommer(element *e, char caractere)
 {
     if (e->charac == caractere)
-    {
+    {   
         lire_caractere(e);
     }
     else
-    {
+    {   
         printf("Erreur: caractere attendu: %c, caractere trouve: %c\n", caractere, e->charac);
-        exit(-1);
     }
 }
 
@@ -351,9 +342,27 @@ void texte_enrichi(element *e)
     document(e);
     while (e->charac != EOF)
     {
-        annexes(e);
+        if (e->charac == '<')
+        {
+            lire_token(e);
+            if (e->balise_actuelle == BALISE_ANNEXE)
+            {
+                annexes(e);
+            }
+            else
+            {
+                printf("Erreur: balise non reconnue ou incorrecte\n");
+                exit(-1);
+            }
+        }
+        else if (e->charac != '\n' && e->charac != ' ')
+        {
+            // Handle text content inside the <annexe> tag
+            mot_simple(e);
+        }
     }
 }
+
 
 void document(element *e)
 {
@@ -382,29 +391,22 @@ void contenu(element *e, int balise_contenante)
             switch (e->balise_actuelle)
             {
             case BALISE_FIN_DOCUMENT:
-                fermeture_balise(e, balise_contenante);
-                break;
             case BALISE_FIN_ANNEXE:
+            case BALISE_FIN_SECTION:
+            case BALISE_FIN_TITRE:
+            case BALISE_FIN_LISTE:
+            case BALISE_FIN_ITEM:
                 fermeture_balise(e, balise_contenante);
                 break;
             case BALISE_SECTION:
                 section(e);
                 break;
-            case BALISE_FIN_SECTION:
-                fermeture_balise(e, balise_contenante);
-                break;
             case BALISE_TITRE:
                 titre(e);
-                break;
-            case BALISE_FIN_TITRE:
-                fermeture_balise(e, balise_contenante);
                 break;
             case BALISE_LISTE:
                 liste(e);
                 passer_espace(e);
-                break;
-            case BALISE_FIN_LISTE:
-                fermeture_balise(e, balise_contenante);
                 break;
             case BALISE_MOT_IMPORTANT:
                 mot_enrichi(e);
@@ -428,6 +430,7 @@ void contenu(element *e, int balise_contenante)
     }
     passer_espace(e);
 }
+
 
 void section(element *e)
 {
@@ -613,21 +616,27 @@ void mot_simple(element *e)
     passer_espace(e);
 }
 
-void fermeture_balise(element *e, int balise_contenante) {
-    printf("Fermeture balise attendue: %d, balise courante: %d\n", balise_contenante, e->noeud_courant->balise);
-    while (e->noeud_courant->balise != balise_contenante) {
-        if (e->noeud_courant->parent == NULL) {
+void fermeture_balise(element *e, int balise_contenante)
+{
+    while (e->noeud_courant->balise != balise_contenante)
+    {
+        if (e->noeud_courant->parent == NULL)
+        {
             printf("Erreur: balise de fin manquante pour %d\n", balise_contenante);
             exit(-1);
         }
         e->noeud_courant = e->noeud_courant->parent;
     }
-    if (e->noeud_courant->parent != NULL) {
+    if (e->noeud_courant->parent != NULL)
+    {
         e->noeud_courant = e->noeud_courant->parent; // Remonter au parent
-    } else {
+    }
+    else
+    {
         printf("Avertissement: la balise de fin pour %d est à la racine.\n", balise_contenante);
     }
 }
+
 
 
 
@@ -697,134 +706,17 @@ void afficher_arbre(Node *noeud, int profondeur, FILE *fichier)
         afficher_arbre(noeud->enfants[i], profondeur + 1, fichier);
     }
 }
-// void afficher_arbre(Node* noeud, FILE* fichier, int profondeur, int dernier_enfant) {
-//     if (noeud == NULL) {
-//         return;
-//     }
 
-//     char symbole = dernier_enfant ? '└' : '├';
-//     char remplissage = dernier_enfant ? ' ' : '|';
 
-//     for (int i = 0; i < profondeur; i++) {
-//         fprintf(fichier, "%c   ", remplissage);
-//     }
-
-//     switch (noeud->balise) {
-//         case BALISE_DOCUMENT:
-//             fprintf(fichier, "%c── document\n", symbole);
-//             break;
-//         case BALISE_FIN_DOCUMENT:
-//             break;
-//         case BALISE_ANNEXE:
-//             fprintf(fichier, "%c── annexe\n", symbole);
-//             break;
-//         case BALISE_FIN_ANNEXE:
-//             break;
-//         case BALISE_TITRE:
-//             fprintf(fichier, "%c── titre\n", symbole);
-//             break;
-//         case BALISE_FIN_TITRE:
-//             break;
-//         case BALISE_LISTE:
-//             fprintf(fichier, "%c── liste\n", symbole);
-//             break;
-//         case BALISE_FIN_LISTE:
-//             break;
-//         case BALISE_MOT_IMPORTANT:
-//             fprintf(fichier, "%c── mot_important: %s\n", symbole, noeud->contenu);
-//             break;
-//         case BALISE_FIN_MOT_IMPORTANT:
-//             break;
-//         case BALISE_SECTION:
-//             fprintf(fichier, "%c── section\n", symbole);
-//             break;
-//         case BALISE_FIN_SECTION:
-//             break;
-//         case BALISE_ITEM:
-//             fprintf(fichier, "%c── item\n", symbole);
-//             break;
-//         case BALISE_FIN_ITEM:
-//             break;
-//         case BALISE_RETOUR_LIGNE:
-//             break;
-//         case BALISE_TEXTE:
-//             fprintf(fichier, "%c── %s\n", symbole, noeud->contenu);
-//             break;
-//         default:
-//             fprintf(fichier, "%c── balise inconnue\n", symbole);
-//             break;
-//     }
-
-//     for (int i = 0; i < noeud->nb_enfants; i++) {
-//         afficher_arbre(noeud->enfants[i], fichier, profondeur + 1, i == noeud->nb_enfants - 1);
-//     }
-// }
-
-char *getNodeContent(Node *noeud)
-{
-    if (!noeud)
-        return "Nœud Vide";
-
-    static char content[256];
-    memset(content, 0, sizeof(content));
-
-    switch (noeud->balise)
-    {
-    case BALISE_DOCUMENT:
-        strcpy(content, "Document");
-        break;
-    case BALISE_ANNEXE:
-        strcpy(content, "Annexe");
-        break;
-    case BALISE_TITRE:
-        strcpy(content, "Titre");
-        break;
-    case BALISE_LISTE:
-        strcpy(content, "Liste");
-        break;
-    case BALISE_ITEM:
-        strcpy(content, "Item");
-        break;
-    case BALISE_SECTION:
-        strcpy(content, "Section");
-        break;
-    case BALISE_MOT_IMPORTANT:
-        sprintf(content, "Mot Important: %s", noeud->contenu);
-        break;
-    case BALISE_TEXTE:
-        sprintf(content, "%s", noeud->contenu);
-        break;
-    default:
-        strcpy(content, "Type Inconnu");
-        break;
-    }
-
-    return content;
-}
-
-void printBox(Node *node, int level, FILE *fichier)
-{
-    char indent[1024] = {0};
-    for (int i = 0; i < level; ++i)
-    {
-        strcat(indent, "  ");
-    }
-
-    fprintf(fichier, "%s+----------------------------------------------+\n", indent);
-
-    char *content = getNodeContent(node);
-    fprintf(fichier, "%s|%s|\n", indent, content);
-
-    for (int i = 0; i < node->nb_enfants; ++i)
-    {
-        printBox(node->enfants[i], level + 1, fichier);
-    }
-
-    fprintf(fichier, "%s+----------------------------------------------+\n", indent);
-}
 
 void printNodeData(Node *noeud, int level, Node *parent)
 {
+    int increment = 1;
+    if (noeud->balise % 2 == 0)
+    {
+        increment = -1;
+    }
+
     for (int i = 0; i < level; ++i)
     {
         printf("  ");
@@ -855,11 +747,16 @@ void printNodeData(Node *noeud, int level, Node *parent)
         }
     }
 
+    level += increment;
+
     for (int i = 0; i < noeud->nb_enfants; ++i)
     {
-        printNodeData(noeud->enfants[i], level + 1, noeud);
+        printNodeData(noeud->enfants[i], level, noeud);
     }
 }
+
+
+
 
 
 void afficher_arbre_box(Node *noeud, int profondeur, FILE *fichier)
@@ -870,70 +767,45 @@ void afficher_arbre_box(Node *noeud, int profondeur, FILE *fichier)
     }
 
     int i;
-    for (i = 0; i < profondeur; i++)
-    {
-        fprintf(fichier, "|  ");
-    }
 
     switch (noeud->balise)
     {
-    case BALISE_DOCUMENT:
-        fprintf(fichier, "+------------------------------------------------+\n");
-        fprintf(fichier, "| DOCUMENT                                       |\n", noeud->contenu);
-        fprintf(fichier, "+------------------------------------------------+\n");
-        break;
-    case BALISE_TITRE:
-        fprintf(fichier, "+----------------------------------------------+\n");
-        fprintf(fichier, "| TITRE                                        |\n", noeud->contenu);
-        fprintf(fichier, "+----------------------------------------------+\n");
-        break;
-    case BALISE_SECTION:
-        fprintf(fichier, "+----------------------------------------------+\n");
-        fprintf(fichier, "| SECTION                                      |\n", noeud->contenu);
-        fprintf(fichier, "+----------------------------------------------+\n");
-        break;
-    case BALISE_LISTE:
-        fprintf(fichier, "+----------------------------------------------+\n");
-        fprintf(fichier, "| LISTE                                        |\n", noeud->contenu);
-        fprintf(fichier, "+----------------------------------------------+\n");
-        break;
-    case BALISE_ITEM:
-        fprintf(fichier, "+----------------------------------------------+\n");
-        fprintf(fichier, "| ITEM                                         |\n", noeud->contenu);
-        fprintf(fichier, "+----------------------------------------------+\n");
-        break;
-    case BALISE_ANNEXE:
-        fprintf(fichier, "+----------------------------------------------+\n");
-        fprintf(fichier, "| ANNEXE                                       |\n", noeud->contenu);
-        fprintf(fichier, "+----------------------------------------------+\n");
-        break;
-    case BALISE_MOT_IMPORTANT:
-        fprintf(fichier, "+----------------------------------------------+\n");
-        fprintf(fichier, "| Mot important : %s                           |\n", noeud->contenu);
-        fprintf(fichier, "+----------------------------------------------+\n");
-        break;
-    case BALISE_RETOUR_LIGNE:
-        break;
-    case BALISE_FIN_DOCUMENT:
-        break;
-    case BALISE_FIN_TITRE:
-        break;
-    case BALISE_FIN_SECTION:
-        break;
-    case BALISE_FIN_LISTE:
-        break;
-    case BALISE_FIN_ITEM:
-        break;
-    case BALISE_FIN_ANNEXE:
-        break;
-    case BALISE_TEXTE:
-        fprintf(fichier, "| %s |\n", noeud->contenu);
-        break;
-    default:
-        fprintf(fichier, "+----------------------------------------------+\n");
-        fprintf(fichier, "| Balise inconnue                              |\n");
-        fprintf(fichier, "+----------------------------------------------+\n");
-        break;
+        case BALISE_DOCUMENT:
+            fprintf(fichier, "+------------------------------------------------+\n");
+            break;
+        case BALISE_TITRE:
+        case BALISE_SECTION:
+        case BALISE_ANNEXE:
+            fprintf(fichier, "+----------------------------------------------+\n");
+            fprintf(fichier, "|");
+            for (int j = 0; j < strlen(noeud->contenu); j++)
+            {
+                if (noeud->contenu[j] == '<')
+                {
+                    j++;
+                    while (noeud->contenu[j] != '>' && noeud->contenu[j] != '\0')
+                    {
+                        fprintf(fichier, "%c", noeud->contenu[j]);
+                        j++;
+                    }
+                }
+                else
+                {
+                    fprintf(fichier, " %c", noeud->contenu[j]);
+                }
+            }
+            fprintf(fichier, " |\n");
+            break;
+        case BALISE_LISTE:
+        case BALISE_ITEM:
+            fprintf(fichier, "+----------------------------------------------+\n");
+            break;
+        case BALISE_TEXTE:
+            fprintf(fichier, "| %s |\n", noeud->contenu);
+            break;
+        default:
+            fprintf(fichier, "+----------------------------------------------+\n");
+            break;
     }
 
     for (i = 0; i < noeud->nb_enfants; i++)
@@ -941,13 +813,23 @@ void afficher_arbre_box(Node *noeud, int profondeur, FILE *fichier)
         afficher_arbre_box(noeud->enfants[i], profondeur + 1, fichier);
     }
 
-    if (noeud->balise == BALISE_TEXTE)
+
+
+    switch (noeud->balise)
     {
-        for (i = 0; i < profondeur; i++)
-        {
-            fprintf(fichier, "|  ");
-        }
-        fprintf(fichier, "+\n");
+        case BALISE_DOCUMENT:
+            fprintf(fichier, "+------------------------------------------------+\n");
+            break;
+        case BALISE_TITRE:
+        case BALISE_SECTION:
+        case BALISE_ANNEXE:
+        case BALISE_LISTE:
+        case BALISE_ITEM:
+            fprintf(fichier, "+----------------------------------------------+\n");
+            break;
+        default:
+            fprintf(fichier, "+----------------------------------------------+\n");
+            break;
     }
 }
 
@@ -998,6 +880,3 @@ int main()
     fclose(fichier);
     return 0;
 }
-
-
-
