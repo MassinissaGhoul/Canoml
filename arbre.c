@@ -211,6 +211,7 @@ void printNodeData(Node *noeud, int level, Node *parent)
 
 
 void printFormattedLine(FILE *fichier, const char *text, int width, int depth, const char *prefix) {
+    depth = depth;
     fprintf(fichier, "|");
     if (prefix) {
         fprintf(fichier, "%s ", prefix);
