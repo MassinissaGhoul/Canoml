@@ -38,5 +38,5 @@ Le projet nanoml est développé dans le cadre du cours d'Algorithmes avancés p
 Pour compiler et exécuter le projet, utilisez les commandes suivantes dans votre terminal (assurez-vous que GCC est installé):
 
 ```bash
-gcc -o nanoml main.c
-./nanoml
+make all
+./canoml
