@@ -2,86 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-typedef enum
-{
-    BALISE_INCONNUE,
-    BALISE_DOCUMENT,
-    BALISE_FIN_DOCUMENT,
-    BALISE_ANNEXE,
-    BALISE_FIN_ANNEXE,
-    BALISE_TITRE,
-    BALISE_FIN_TITRE,
-    BALISE_LISTE,
-    BALISE_FIN_LISTE,
-    BALISE_MOT_IMPORTANT,
-    BALISE_FIN_MOT_IMPORTANT,
-    BALISE_SECTION,
-    BALISE_FIN_SECTION,
-    BALISE_ITEM,
-    BALISE_FIN_ITEM,
-    BALISE_RETOUR_LIGNE,
-    BALISE_TEXTE 
-} balise_t;
-
-typedef struct Node
-{
-    balise_t balise;
-    char *contenu;
-    int nb_enfants;
-    struct Node **enfants;
-    struct Node *parent;
-    int profondeur; 
-} Node;
-
-typedef struct
-{
-    FILE *fichier;
-    int charac;
-    balise_t balise_actuelle;
-    FILE *output;
-    Node *noeud_courant;
-    Node *noeud_racine;
-} element;
-
-
-
-
-Node *creer_noeud(balise_t balise, char *contenu);
-void ajouter_enfant(Node *parent, Node *enfant);
-void ecrire_arbre(FILE *output, Node *noeud);
-
-void ouverture(element *e, char *nom_fichier);
-void fermeture(element *e);
-void lire_caractere(element *e);
-void passer_espace(element *e);
-void update_balise_actuelle(element *e, char *token);
-void lire_token(element *e);
-void consommer(element *e, char caractere);
-void consommer_token(element *e, char *token);
-void texte_enrichi(element *e);
-void document(element *e);
-void contenu(element *e, int balise_contenante);
-void section(element *e);
-void titre(element *e);
-void texte(element *e);
-void liste(element *e);
-void item(element *e);
-void annexes(element *e);
-void mot_enrichi(element *e);
-void mot_important(element *e);
-void mot_simple(element *e);
-void fermeture_balise(element *e, int balise_contenante);
-void afficher_arbre(Node *noeud, int profondeur, FILE *fichier);
-void printNodeData(Node *noeud, int level, Node *parent);
-
-void afficher_arbre_box(Node *noeud, FILE *fichier, int depth);
-void printFormattedLine(FILE *fichier, const char *text, int width, int depth, const char *prefix);
-void printBox(FILE *fichier, int width);
-void liberer_noeud(Node *noeud);
-void liberer_arbre(Node *racine);
-
-
+#include "struct.h"
+#include "analyseur.h"
+#include "arbre.h"
 
 
 Node *creer_noeud(balise_t balise, char *contenu)
