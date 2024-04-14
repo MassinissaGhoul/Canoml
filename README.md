@@ -2,6 +2,7 @@
 
 ## Description
 Le projet nanoml est développé dans le cadre du cours d'Algorithmes avancés pour la Licence Sciences du Numérique. Il vise à construire un analyseur syntaxique pour un format de document simplifié, inspiré par HTML, appelé nanoml. Ce README décrit les principales composantes du projet, y compris les fonctions clés implémentées en C.
+L'affochage se fait dans bloc.txt
 
 ## Fonctions
 
