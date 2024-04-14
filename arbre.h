@@ -68,5 +68,23 @@ void liberer_noeud(Node *noeud);
 void liberer_arbre(Node *racine);
 
 
+/**
+ * Affiche l'arbre syntaxique dans un fichier, en respectant la profondeur de chaque nœud.
+ * @param noeud Nœud racine de l'arbre à afficher.
+ * @param profondeur Profondeur actuelle dans l'arbre, utilisée pour l'indentation.
+ * @param fichier Fichier de sortie où écrire l'arbre.
+ */
+void afficher_arbre(Node *noeud, int profondeur, FILE *fichier);
+
+/**
+ * Imprime les données d'un nœud, incluant son niveau, sa balise, et son contenu, pour le débogage.
+ * @param noeud Nœud à imprimer.
+ * @param level Niveau de profondeur du nœud dans l'arbre.
+ * @param parent Nœud parent du nœud actuel, utilisé pour référence croisée.
+ */
+void printNodeData(Node *noeud, int level, Node *parent);
+
+
+
 
 #endif
