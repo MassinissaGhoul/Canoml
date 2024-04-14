@@ -1,8 +1,16 @@
-canoml: main3.o 
-	gcc -o canoml main3.o 
+opt = -c -Wall -Wextra
 
-main3.o: main3.c
-	gcc -c main3.c
+canoml: main.o arbre.o analyseur.o
+	gcc -o canoml main.o arbre.o analyseur.o
+
+main.o: main.c
+	gcc ${opt} main.c
+
+arbre.o: arbre.c
+	gcc ${opt} arbre.c
+
+analyseur.o: analyseur.c
+	gcc ${opt} analyseur.c
 
 
 ifneq ($(OS),Windows_NT)
