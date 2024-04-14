@@ -156,6 +156,16 @@ void afficher_arbre(Node *noeud, int profondeur, FILE *fichier);
 void printNodeData(Node *noeud, int level, Node *parent);
 
 
+/**
+ * Identifie le type de balise à partir d'un token de chaîne de caractères.
+ * Compare le token avec un tableau prédéfini de chaînes représentant les balises valides du format nanoml.
+ *
+ * @param token La chaîne de caractères représentant une balise potentielle à identifier.
+ * @return Le type de balise correspondant (balise_t) si le token est reconnu, sinon retourne BALISE_INCONNUE.
+ */
+balise_t get_balise(const char *token);
+
+
 
 
 #endif
