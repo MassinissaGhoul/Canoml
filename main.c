@@ -3,9 +3,8 @@
 #include <string.h>
 
 #include "struct.h"
-#include "analyseur.h"
 #include "arbre.h"
-
+#include "analyseur.h"
 
 
 int main()

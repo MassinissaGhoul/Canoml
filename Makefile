@@ -13,13 +13,8 @@ analyseur.o: analyseur.c
 	gcc ${opt} analyseur.c
 
 
-ifneq ($(OS),Windows_NT)
 clean:
 		rm -f *.o
-else
-clean:
-		del /f /q *.o
-endif
 
 all:
 		make canoml
