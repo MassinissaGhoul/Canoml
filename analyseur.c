@@ -231,7 +231,7 @@ void document(element *e)
 
 void contenu(element *e, int balise_contenante)
 {
-    while (e->balise_actuelle != balise_contenante)
+    while ((int)e->balise_actuelle != balise_contenante)
     {
         if (e->charac == EOF)
         {
@@ -481,7 +481,7 @@ void mot_simple(element *e)
 
 void fermeture_balise(element *e, int balise_contenante)
 {
-    while (e->noeud_courant->balise != balise_contenante)
+    while ((int)e->noeud_courant->balise != balise_contenante)
     {
         if (e->noeud_courant->parent == NULL)
         {
